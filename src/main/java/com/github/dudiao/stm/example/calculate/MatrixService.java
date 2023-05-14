@@ -2,13 +2,13 @@ package com.github.dudiao.stm.example.calculate;
 
 import cn.hutool.core.date.StopWatch;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.core.text.csv.CsvData;
 import cn.hutool.core.text.csv.CsvReadConfig;
 import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
 import cn.hutool.core.util.StrUtil;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math4.legacy.linear.Array2DRowFieldMatrix;
 import org.apache.commons.math4.legacy.linear.ArrayFieldVector;
 import org.apache.commons.math4.legacy.linear.BigReal;
@@ -39,9 +39,9 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class MatrixService implements LifecycleBean {
 
-  @Inject("${app.initMatrix}")
+  @Inject(value = "${app.initMatrix}", required = false)
   File initFile;
-  @Inject("${app.resultFile}")
+  @Inject(value = "${app.resultFile}", required = false)
   File resultFile;
   @Inject("${app.scale}")
   Integer scale;
@@ -56,8 +56,29 @@ public class MatrixService implements LifecycleBean {
 
   BigDecimal[][] property;
 
+  String initMatrix;
+
   @Override
   public void start() throws Throwable {
+    // initMatrix
+    if (initFile == null) {
+      File file = new File(System.getProperty("user.dir") + "/initMatrix.csv");
+      if (file.exists()) {
+        initMatrix = FileUtil.readString(file, StandardCharsets.UTF_8);
+      }
+      if (StrUtil.isBlank(initMatrix)) {
+        initMatrix = ResourceUtil.readStr("initMatrix.csv", StandardCharsets.UTF_8);
+      }
+    } else {
+      initMatrix = FileUtil.readUtf8String(initFile);
+    }
+
+    // resultFile
+    if (resultFile == null) {
+      String userDir = System.getProperty("user.dir");
+      resultFile = new File(userDir + File.separator + "result.csv");
+    }
+
     String[] split = stepsStr.split(",");
     steps = new BigDecimal[split.length];
     for (int i = 0; i < split.length; i++) {
@@ -89,7 +110,7 @@ public class MatrixService implements LifecycleBean {
     CsvReadConfig csvReadConfig = CsvReadConfig.defaultConfig();
     csvReadConfig.setContainsHeader(true);
     CsvReader reader = CsvUtil.getReader(csvReadConfig);
-    CsvData read = reader.read(initFile);
+    CsvData read = reader.readFromStr(initMatrix);
     List<String> header = read.getHeader();
     int size = header.size();
     BigDecimal[][] matrix = new BigDecimal[size][size];
