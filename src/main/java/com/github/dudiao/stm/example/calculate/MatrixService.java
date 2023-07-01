@@ -39,78 +39,124 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class MatrixService implements LifecycleBean {
 
-  @Inject(value = "${app.initMatrix}", required = false)
-  File initFile;
-  @Inject(value = "${app.resultFile}", required = false)
-  File resultFile;
+  @Inject(value = "${app.initMatrix4}", required = false)
+  File initFile4;
+  @Inject(value = "${app.initMatrix3}", required = false)
+  File initFile3;
+  @Inject(value = "${app.resultFile4}", required = false)
+  File resultFile4;
+  @Inject(value = "${app.resultFile3}", required = false)
+  File resultFile3;
+
   @Inject("${app.scale}")
   Integer scale;
-  @Inject("${app.total}")
-  BigDecimal total;
-  @Inject("${app.steps}")
-  String stepsStr;
-  @Inject("${app.property}")
-  Map<String, String> proMap = new LinkedHashMap<>();
+  @Inject("${app.total4}")
+  BigDecimal total4;
 
-  BigDecimal[] steps;
+  @Inject("${app.total3}")
+  BigDecimal total3;
+  @Inject("${app.steps4}")
+  String steps4Str;
+  @Inject("${app.steps3}")
+  String steps3Str;
+  @Inject("${app.property4}")
+  Map<String, String> pro4Map = new LinkedHashMap<>();
+  @Inject("${app.property3}")
+  Map<String, String> pro3Map = new LinkedHashMap<>();
 
-  BigDecimal[][] property;
+  BigDecimal[] steps4;
+  BigDecimal[] steps3;
 
-  String initMatrix;
+  BigDecimal[][] property4;
+  BigDecimal[][] property3;
+
+  String initMatrix4;
+
+  String initMatrix3;
 
   @Override
   public void start() throws Throwable {
     // initMatrix
-    if (initFile == null) {
-      File file = new File(System.getProperty("user.dir") + "/initMatrix.csv");
+    if (initFile4 == null) {
+      File file = new File(System.getProperty("user.dir") + "/initMatrix4.csv");
       if (file.exists()) {
-        initMatrix = FileUtil.readString(file, StandardCharsets.UTF_8);
+        initMatrix4 = FileUtil.readString(file, StandardCharsets.UTF_8);
       }
-      if (StrUtil.isBlank(initMatrix)) {
-        initMatrix = ResourceUtil.readStr("initMatrix.csv", StandardCharsets.UTF_8);
+      if (StrUtil.isBlank(initMatrix4)) {
+        initMatrix4 = ResourceUtil.readStr("initMatrix4.csv", StandardCharsets.UTF_8);
       }
     } else {
-      initMatrix = FileUtil.readUtf8String(initFile);
+      initMatrix4 = FileUtil.readUtf8String(initFile4);
+    }
+    if (initFile3 == null) {
+      File file = new File(System.getProperty("user.dir") + "/initMatrix3.csv");
+      if (file.exists()) {
+        initMatrix3 = FileUtil.readString(file, StandardCharsets.UTF_8);
+      }
+      if (StrUtil.isBlank(initMatrix3)) {
+        initMatrix3 = ResourceUtil.readStr("initMatrix3.csv", StandardCharsets.UTF_8);
+      }
+    } else {
+      initMatrix3 = FileUtil.readUtf8String(initFile3);
     }
 
     // resultFile
-    if (resultFile == null) {
+    if (resultFile4 == null) {
       String userDir = System.getProperty("user.dir");
-      resultFile = new File(userDir + File.separator + "result.csv");
+      resultFile4 = new File(userDir + File.separator + "result4.csv");
+    }
+    if (resultFile3 == null) {
+      String userDir = System.getProperty("user.dir");
+      resultFile3 = new File(userDir + File.separator + "result3.csv");
     }
 
-    String[] split = stepsStr.split(",");
-    steps = new BigDecimal[split.length];
+    String[] split = steps4Str.split(",");
+    steps4 = new BigDecimal[split.length];
     for (int i = 0; i < split.length; i++) {
-      steps[i] = new BigDecimal(split[i]).setScale(scale, RoundingMode.HALF_UP);
+      steps4[i] = new BigDecimal(split[i]).setScale(scale, RoundingMode.HALF_UP);
     }
 
-    total = total.setScale(scale, RoundingMode.HALF_UP);
+    String[] split3 = steps3Str.split(",");
+    steps3 = new BigDecimal[split3.length];
+    for (int i = 0; i < split3.length; i++) {
+      steps3[i] = new BigDecimal(split3[i]).setScale(scale, RoundingMode.HALF_UP);
+    }
 
-    Collection<String> values = proMap.values();
+    total4 = total4.setScale(scale, RoundingMode.HALF_UP);
+
+    Collection<String> values = pro4Map.values();
     List<String> list = new ArrayList<>(values);
     int len = list.get(0).split(",").length;
-    property = new BigDecimal[values.size()][len];
+    property4 = new BigDecimal[values.size()][len];
+    setProperty(list, property4);
+
+    Collection<String> values3 = pro3Map.values();
+    List<String> list3 = new ArrayList<>(values3);
+    int len3 = list3.get(0).split(",").length;
+    property3 = new BigDecimal[values3.size()][len3];
+    setProperty(list3, property3);
+
+  }
+
+  private void setProperty(List<String> list, BigDecimal[][] property) {
     for (int i = 0; i < list.size(); i++) {
       String[] split1 = list.get(i).split(",");
       for (int j = 0; j < split1.length; j++) {
         property[i][j] = new BigDecimal(split1[j]).setScale(scale, RoundingMode.HALF_UP);
       }
     }
-
   }
 
-
   /**
-   * 获取方程组
+   * 计算方程组，3 个性质
    */
-  public void calculate() {
-    StopWatch stopWatch = new StopWatch("calculate");
+  public void calculate3() {
+    StopWatch stopWatch = new StopWatch("calculate3");
     stopWatch.start("init");
     CsvReadConfig csvReadConfig = CsvReadConfig.defaultConfig();
     csvReadConfig.setContainsHeader(true);
     CsvReader reader = CsvUtil.getReader(csvReadConfig);
-    CsvData read = reader.readFromStr(initMatrix);
+    CsvData read = reader.readFromStr(initMatrix3);
     List<String> header = read.getHeader();
     int size = header.size();
     BigDecimal[][] matrix = new BigDecimal[size][size];
@@ -125,18 +171,16 @@ public class MatrixService implements LifecycleBean {
         }
       }
     }
-    FileUtil.touch(resultFile);
-    CsvWriter writer = CsvUtil.getWriter(resultFile, StandardCharsets.UTF_8);
+    FileUtil.touch(resultFile3);
+    CsvWriter writer = CsvUtil.getWriter(resultFile3, StandardCharsets.UTF_8);
     List<String> headerList = new ArrayList<>();
     headerList.add("right1");
     headerList.add("right2");
     headerList.add("right3");
-    headerList.add("right4");
-    headerList.add("解_w");
-    headerList.add("解_x");
-    headerList.add("解_y");
-    headerList.add("解_z");
-    headerList.addAll(proMap.keySet());
+    for (String s : header) {
+      headerList.add("解_" + s);
+    }
+    headerList.addAll(pro3Map.keySet());
 
     writer.writeHeaderLine(headerList.toArray(new String[0]));
     stopWatch.stop();
@@ -146,37 +190,118 @@ public class MatrixService implements LifecycleBean {
     Array2DRowFieldMatrix<BigReal> coefficients = new Array2DRowFieldMatrix<>(matrixTmp, false);
     FieldDecompositionSolver<BigReal> solver = new FieldLUDecomposition<>(coefficients).getSolver();
 
-    for (BigDecimal i = BigDecimal.ZERO; i.compareTo(total) <= 0; i = i.add(steps[0])) {
-      BigDecimal tempI = total.subtract(i);
-      for (BigDecimal j = BigDecimal.ZERO; j.compareTo(tempI) <= 0; j = j.add(steps[1])) {
+    for (BigDecimal i = BigDecimal.ZERO; i.compareTo(total3) <= 0; i = i.add(steps3[0])) {
+      BigDecimal tempI = total3.subtract(i);
+      for (BigDecimal j = BigDecimal.ZERO; j.compareTo(tempI) <= 0; j = j.add(steps3[1])) {
+        BigDecimal k = tempI.subtract(j);
+
+        // 解方程
+        ArrayFieldVector<BigReal> constants = new ArrayFieldVector<>(new BigReal[]{new BigReal(i), new BigReal(j), new BigReal(k)}, false);
+        FieldVector<BigReal> solution = solver.solve(constants);
+        List<BigDecimal> solutionList = new ArrayList<>();
+        for (int i1 = 0; i1 < header.size(); i1++) {
+          BigDecimal bigDecimal = solution.getEntry(i1).bigDecimalValue();
+          solutionList.add(bigDecimal);
+        }
+
+        if (solutionList.stream().anyMatch(bigDecimal -> bigDecimal.compareTo(BigDecimal.ZERO) < 0)) {
+          continue;
+        }
+
+        // 计算属性
+        BigDecimal[] calculateProperty = calculateProperty(solutionList, property3);
+        List<String> line = new ArrayList<>();
+        line.add(toStr(i));
+        line.add(toStr(j));
+        line.add(toStr(k));
+        line.addAll(solutionList.stream().map(this::toStr).toList());
+        for (BigDecimal bigDecimal : calculateProperty) {
+          line.add(toStr(bigDecimal));
+        }
+        writer.writeLine(line.toArray(new String[0]));
+      }
+    }
+    writer.flush();
+
+    stopWatch.stop();
+    System.out.println(stopWatch.prettyPrint(TimeUnit.MILLISECONDS));
+    System.out.println("生成的Excel3路径：" + resultFile3.getAbsolutePath());
+  }
+
+
+  /**
+   * 计算方程组，4 个性质
+   */
+  public void calculate4() {
+    StopWatch stopWatch = new StopWatch("calculate4");
+    stopWatch.start("init");
+    CsvReadConfig csvReadConfig = CsvReadConfig.defaultConfig();
+    csvReadConfig.setContainsHeader(true);
+    CsvReader reader = CsvUtil.getReader(csvReadConfig);
+    CsvData read = reader.readFromStr(initMatrix4);
+    List<String> header = read.getHeader();
+    int size = header.size();
+    BigDecimal[][] matrix = new BigDecimal[size][size];
+    for (int i = 0; i < size; i++) {
+      List<String> rawList = read.getRow(i).getRawList();
+      for (int j = 0; j < size; j++) {
+        String raw = rawList.get(j);
+        if (StrUtil.isBlank(raw)) {
+          matrix[i][j] = BigDecimal.ZERO;
+        } else {
+          matrix[i][j] = new BigDecimal(raw).setScale(scale, RoundingMode.HALF_UP);
+        }
+      }
+    }
+    FileUtil.touch(resultFile4);
+    CsvWriter writer = CsvUtil.getWriter(resultFile4, StandardCharsets.UTF_8);
+    List<String> headerList = new ArrayList<>();
+    headerList.add("right1");
+    headerList.add("right2");
+    headerList.add("right3");
+    headerList.add("right4");
+    for (String s : header) {
+      headerList.add("解_" + s);
+    }
+    headerList.addAll(pro4Map.keySet());
+
+    writer.writeHeaderLine(headerList.toArray(new String[0]));
+    stopWatch.stop();
+
+    stopWatch.start("calculate");
+    BigReal[][] matrixTmp = arraycopy(matrix);
+    Array2DRowFieldMatrix<BigReal> coefficients = new Array2DRowFieldMatrix<>(matrixTmp, false);
+    FieldDecompositionSolver<BigReal> solver = new FieldLUDecomposition<>(coefficients).getSolver();
+
+    for (BigDecimal i = BigDecimal.ZERO; i.compareTo(total4) <= 0; i = i.add(steps4[0])) {
+      BigDecimal tempI = total4.subtract(i);
+      for (BigDecimal j = BigDecimal.ZERO; j.compareTo(tempI) <= 0; j = j.add(steps4[1])) {
         BigDecimal tempJ = tempI.subtract(j);
-        for (BigDecimal k = BigDecimal.ZERO; k.compareTo(tempJ) <= 0; k = k.add(steps[2])) {
+        for (BigDecimal k = BigDecimal.ZERO; k.compareTo(tempJ) <= 0; k = k.add(steps4[2])) {
 
           BigDecimal l = tempJ.subtract(k);
 
           // 解方程
           ArrayFieldVector<BigReal> constants = new ArrayFieldVector<>(new BigReal[]{new BigReal(i), new BigReal(j), new BigReal(k), new BigReal(l)}, false);
           FieldVector<BigReal> solution = solver.solve(constants);
-          BigDecimal w = solution.getEntry(0).bigDecimalValue();
-          BigDecimal x = solution.getEntry(1).bigDecimalValue();
-          BigDecimal y = solution.getEntry(2).bigDecimalValue();
-          BigDecimal z = solution.getEntry(3).bigDecimalValue();
-          if (w.compareTo(BigDecimal.ZERO) < 0 || x.compareTo(BigDecimal.ZERO) < 0 || y.compareTo(BigDecimal.ZERO) < 0 || z.compareTo(BigDecimal.ZERO) < 0) {
+          List<BigDecimal> solutionList = new ArrayList<>();
+          for (int i1 = 0; i1 < header.size(); i1++) {
+            BigDecimal bigDecimal = solution.getEntry(i1).bigDecimalValue();
+            solutionList.add(bigDecimal);
+          }
+
+          if (solutionList.stream().anyMatch(bigDecimal -> bigDecimal.compareTo(BigDecimal.ZERO) < 0)) {
             continue;
           }
-          BigDecimal[] result = new BigDecimal[]{w, x, y, z};
 
           // 计算属性
-          BigDecimal[] calculateProperty = calculateProperty(result, property);
+          BigDecimal[] calculateProperty = calculateProperty(solutionList, property4);
           List<String> line = new ArrayList<>();
           line.add(toStr(i));
           line.add(toStr(j));
           line.add(toStr(k));
           line.add(toStr(l));
-          line.add(toStr(result[0]));
-          line.add(toStr(result[1]));
-          line.add(toStr(result[2]));
-          line.add(toStr(result[3]));
+          line.addAll(solutionList.stream().map(this::toStr).toList());
           for (BigDecimal bigDecimal : calculateProperty) {
             line.add(toStr(bigDecimal));
           }
@@ -188,7 +313,7 @@ public class MatrixService implements LifecycleBean {
 
     stopWatch.stop();
     System.out.println(stopWatch.prettyPrint(TimeUnit.MILLISECONDS));
-    System.out.println("生成的Excel路径：" + resultFile.getAbsolutePath());
+    System.out.println("生成的Excel4路径：" + resultFile4.getAbsolutePath());
   }
 
   public static BigReal[][] arraycopy(BigDecimal[][] array) {
@@ -208,7 +333,7 @@ public class MatrixService implements LifecycleBean {
    * @param result         方程的解
    * @param propertyMatrix 属性矩阵
    */
-  public BigDecimal[] calculateProperty(BigDecimal[] result, BigDecimal[][] propertyMatrix) {
+  public BigDecimal[] calculateProperty(List<BigDecimal> result, BigDecimal[][] propertyMatrix) {
 
     BigDecimal[] resultPro = new BigDecimal[propertyMatrix.length];
 
@@ -217,7 +342,7 @@ public class MatrixService implements LifecycleBean {
       BigDecimal[] property = propertyMatrix[i];
       for (int j = 0; j < property.length; j++) {
         // 累加，计算密度
-        resultProperty = resultProperty.add(result[j].multiply(property[j]));
+        resultProperty = resultProperty.add(result.get(j).multiply(property[j]));
       }
       resultPro[i] = resultProperty;
     }

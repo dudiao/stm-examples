@@ -21,11 +21,7 @@ public class AppStartEvent implements EventListener<AppLoadEndEvent> {
 
     System.out.println("start calculate...");
 
-    try {
-      matrixService.calculate();
-    } catch (Exception e) {
-      System.out.println("calculate error" + e.getMessage());
-      e.printStackTrace();
-    }
+    matrixService.calculate4();
+    matrixService.calculate3();
   }
 }
